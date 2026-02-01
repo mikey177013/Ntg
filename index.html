@@ -43,6 +43,8 @@
     .buttons {
       position: relative;
       height: 120px;
+      width: 100%;
+      margin: 0 auto;
     }
 
     button {
@@ -107,21 +109,52 @@
     const noBtn = document.getElementById("no");
     const yesBtn = document.getElementById("yes");
     const result = document.getElementById("result");
+    const buttonsContainer = document.querySelector(".buttons");
 
     function moveNoButton() {
-      const card = document.querySelector(".card");
-      const maxX = card.clientWidth - noBtn.offsetWidth;
-      const maxY = card.clientHeight - noBtn.offsetHeight;
-
-      const x = Math.random() * maxX;
-      const y = Math.random() * maxY;
-
-      noBtn.style.left = x + "px";
-      noBtn.style.top = y + "px";
-      noBtn.style.right = "auto";
+      // Get the container dimensions
+      const containerWidth = buttonsContainer.clientWidth;
+      const containerHeight = buttonsContainer.clientHeight;
+      
+      // Get button dimensions
+      const buttonWidth = noBtn.offsetWidth;
+      const buttonHeight = noBtn.offsetHeight;
+      
+      // Calculate max movement (limited to container bounds)
+      const maxX = containerWidth - buttonWidth - 20; // 20px padding
+      const maxY = containerHeight - buttonHeight - 10; // 10px padding
+      
+      // Keep button within reasonable bounds near its original position
+      const originalRight = 40; // Original right position
+      const originalTop = 40; // Original top position
+      
+      // Calculate new position with small random offset
+      const xOffset = (Math.random() - 0.5) * 80; // ±40px from original
+      const yOffset = (Math.random() - 0.5) * 60; // ±30px from original
+      
+      // Calculate new position
+      let newX = Math.max(20, Math.min(maxX, originalRight + xOffset));
+      let newY = Math.max(20, Math.min(maxY, originalTop + yOffset));
+      
+      // Ensure button doesn't go too far from original position
+      const maxDistance = 60; // Max distance from original position
+      const distance = Math.sqrt(Math.pow(newX - originalRight, 2) + Math.pow(newY - originalTop, 2));
+      
+      if (distance > maxDistance) {
+        // Scale back to max distance
+        const scale = maxDistance / distance;
+        newX = originalRight + (newX - originalRight) * scale;
+        newY = originalTop + (newY - originalTop) * scale;
+      }
+      
+      // Apply new position
+      noBtn.style.left = "auto";
+      noBtn.style.right = (containerWidth - newX - buttonWidth) + "px";
+      noBtn.style.top = newY + "px";
     }
 
     noBtn.addEventListener("mouseenter", moveNoButton);
+    noBtn.addEventListener("click", moveNoButton);
 
     noBtn.addEventListener("touchstart", (e) => {
       e.preventDefault();
