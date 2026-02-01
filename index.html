@@ -55,6 +55,7 @@
       cursor: pointer;
       position: absolute;
       transition: transform 0.2s ease;
+      min-width: 100px;
     }
 
     #yes {
@@ -62,12 +63,14 @@
       color: white;
       left: 40px;
       top: 40px;
+      z-index: 2;
     }
 
     #no {
       background: #e0e0e0;
       right: 40px;
       top: 40px;
+      z-index: 1;
     }
 
     #result {
@@ -119,42 +122,74 @@
       // Get button dimensions
       const buttonWidth = noBtn.offsetWidth;
       const buttonHeight = noBtn.offsetHeight;
+      const yesBtnWidth = yesBtn.offsetWidth;
+      const yesBtnHeight = yesBtn.offsetHeight;
       
-      // Calculate max movement (limited to container bounds)
-      const maxX = containerWidth - buttonWidth - 20; // 20px padding
-      const maxY = containerHeight - buttonHeight - 10; // 10px padding
+      // Get Yes button position
+      const yesRect = yesBtn.getBoundingClientRect();
+      const containerRect = buttonsContainer.getBoundingClientRect();
+      const yesBtnLeft = yesRect.left - containerRect.left;
+      const yesBtnTop = yesRect.top - containerRect.top;
       
-      // Keep button within reasonable bounds near its original position
-      const originalRight = 40; // Original right position
-      const originalTop = 40; // Original top position
+      // Original No button position (right side)
+      const originalRight = 40;
+      const originalTop = 40;
       
-      // Calculate new position with small random offset
-      const xOffset = (Math.random() - 0.5) * 80; // ±40px from original
-      const yOffset = (Math.random() - 0.5) * 60; // ±30px from original
+      let newX, newY;
+      let attempts = 0;
+      const maxAttempts = 20;
       
-      // Calculate new position
-      let newX = Math.max(20, Math.min(maxX, originalRight + xOffset));
-      let newY = Math.max(20, Math.min(maxY, originalTop + yOffset));
+      do {
+        // Calculate new position with random offset
+        const xOffset = (Math.random() - 0.5) * 60; // ±30px from original
+        const yOffset = (Math.random() - 0.5) * 40; // ±20px from original
+        
+        // Start from original position on the right
+        let tempX = Math.max(20, Math.min(containerWidth - buttonWidth - 20, originalRight + xOffset));
+        let tempY = Math.max(20, Math.min(containerHeight - buttonHeight - 10, originalTop + yOffset));
+        
+        // Ensure we stay on the right side (prevent crossing to left)
+        if (tempX < containerWidth / 2) {
+          tempX = containerWidth / 2;
+        }
+        
+        // Calculate distance from Yes button (avoid going near it)
+        const distanceFromYesX = Math.abs(tempX - yesBtnLeft);
+        const distanceFromYesY = Math.abs(tempY - yesBtnTop);
+        const distanceFromYes = Math.sqrt(Math.pow(distanceFromYesX, 2) + Math.pow(distanceFromYesY, 2));
+        
+        // Check if position is valid (not too close to Yes button)
+        if (distanceFromYes > 100 && // Minimum 100px from Yes button
+            tempX > containerWidth / 2 && // Stay on right side
+            tempY > 20 && tempY < containerHeight - buttonHeight - 10) {
+          newX = tempX;
+          newY = tempY;
+          break;
+        }
+        
+        attempts++;
+        
+        // If we've tried too many times, just pick a safe position
+        if (attempts >= maxAttempts) {
+          // Force position to stay on the right side away from Yes button
+          newX = containerWidth - buttonWidth - 30;
+          newY = Math.max(20, Math.min(containerHeight - buttonHeight - 10, 
+                     Math.random() * (containerHeight - buttonHeight - 40) + 20));
+          break;
+        }
+      } while (true);
       
-      // Ensure button doesn't go too far from original position
-      const maxDistance = 60; // Max distance from original position
-      const distance = Math.sqrt(Math.pow(newX - originalRight, 2) + Math.pow(newY - originalTop, 2));
-      
-      if (distance > maxDistance) {
-        // Scale back to max distance
-        const scale = maxDistance / distance;
-        newX = originalRight + (newX - originalRight) * scale;
-        newY = originalTop + (newY - originalTop) * scale;
-      }
-      
-      // Apply new position
+      // Apply new position (using right positioning)
       noBtn.style.left = "auto";
       noBtn.style.right = (containerWidth - newX - buttonWidth) + "px";
       noBtn.style.top = newY + "px";
     }
 
     noBtn.addEventListener("mouseenter", moveNoButton);
-    noBtn.addEventListener("click", moveNoButton);
+    noBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      moveNoButton();
+    });
 
     noBtn.addEventListener("touchstart", (e) => {
       e.preventDefault();
@@ -172,6 +207,12 @@
     yesBtn.addEventListener("click", () => {
       document.querySelector(".buttons").style.display = "none";
       result.style.display = "block";
+    });
+
+    // Prevent No button from being clicked accidentally
+    noBtn.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      moveNoButton();
     });
   </script>
 </body>
