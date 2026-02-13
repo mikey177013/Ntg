@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
-  <title>Valentine · mobile fixed</title>
+  <title>Valentine · hearts rain</title>
 
   <style>
     * {
@@ -23,6 +23,7 @@
       padding: 16px;
       margin: 0;
       overflow-x: hidden;
+      position: relative;
     }
 
     .card {
@@ -35,6 +36,7 @@
       box-shadow: 0 12px 28px rgba(0,0,0,0.08);
       text-align: center;
       position: relative;
+      z-index: 10; /* above hearts */
     }
 
     .top-img {
@@ -75,6 +77,7 @@
       border: 1px solid rgba(255,255,255,0.3);
       white-space: nowrap;
       max-width: 120px;
+      z-index: 20;
     }
 
     #yes {
@@ -83,7 +86,6 @@
       left: 5%;
       top: 40px;
       border: 1px solid #ff8ca1;
-      z-index: 10; /* ensure clickable */
     }
 
     #no {
@@ -92,13 +94,15 @@
       right: 5%;
       top: 40px;
       left: auto;
-      z-index: 10;
     }
 
+    /* result area – hidden until YES */
     #result {
       display: none;
       margin-top: 20px;
       animation: pop 0.4s;
+      position: relative;
+      z-index: 25;
     }
 
     #result h2 {
@@ -120,6 +124,18 @@
       100% { transform: scale(1); opacity: 1; }
     }
 
+    /* heart rain canvas – fixed over entire screen */
+    #heartCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none; /* allows clicking through */
+      z-index: 5;
+      display: none; /* hidden until Yes */
+    }
+
     @media (max-width: 380px) {
       .card { padding: 24px 18px; }
       h2 { font-size: 1.5rem; }
@@ -135,160 +151,258 @@
 </head>
 <body>
 
-<div class="card">
+  <!-- Canvas for heart rain -->
+  <canvas id="heartCanvas"></canvas>
 
-  <img 
-    src="https://files.catbox.moe/l7gopn.png" 
-    alt="cute valentine bear"
-    class="top-img"
-    loading="lazy"
-  />
+  <div class="card">
 
-  <h2>Hey will you be my valentine?</h2>
+    <img 
+      src="https://files.catbox.moe/l7gopn.png" 
+      alt="cute valentine bear"
+      class="top-img"
+      loading="lazy"
+    />
 
-  <div class="buttons" id="buttonArea">
-    <button id="yes">Yes</button>
-    <button id="no">No</button>
+    <h2>Hey will you be my valentine?</h2>
+
+    <div class="buttons" id="buttonArea">
+      <button id="yes">Yes</button>
+      <button id="no">No</button>
+    </div>
+
+    <div id="result">
+      <h2>YAY 💖</h2>
+      <img src="https://files.catbox.moe/uoh8r2.gif" alt="celebrating hearts" />
+    </div>
+
   </div>
 
-  <div id="result">
-    <h2>YAY 💖</h2>
-    <img src="https://files.catbox.moe/uoh8r2.gif" alt="celebrating hearts" />
-  </div>
+  <script>
+    (function() {
+      "use strict";
 
-</div>
-
-<script>
-  (function() {
-    "use strict";
-
-    const noBtn = document.getElementById("no");
-    const yesBtn = document.getElementById("yes");
-    const resultDiv = document.getElementById("result");
-    const buttonsContainer = document.querySelector(".buttons");
-
-    // ----- YES BUTTON: WORKS 100% -----
-    // Direct click handler with no interference
-    yesBtn.addEventListener("click", function(e) {
-      e.preventDefault();
-      e.stopPropagation(); // prevent any weird bubbling
+      const noBtn = document.getElementById("no");
+      const yesBtn = document.getElementById("yes");
+      const resultDiv = document.getElementById("result");
+      const buttonsContainer = document.querySelector(".buttons");
       
-      // HIDE buttons container
-      buttonsContainer.style.display = "none";
-      // SHOW result with GIF
-      resultDiv.style.display = "block";
-    });
+      // ----- HEART RAIN SETUP -----
+      const canvas = document.getElementById("heartCanvas");
+      const ctx = canvas.getContext("2d");
+      let hearts = [];
+      let animationFrame = null;
+      let rainActive = false;
 
-    // Also handle touch end explicitly for mobile
-    yesBtn.addEventListener("touchend", function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      buttonsContainer.style.display = "none";
-      resultDiv.style.display = "block";
-    });
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
 
-    // ----- NO BUTTON movement (constrained, never far) -----
-    function moveNoButtonSafely() {
-      // make sure container is visible
-      if (buttonsContainer.style.display === "none") return;
-      
-      const containerRect = buttonsContainer.getBoundingClientRect();
-      const btnWidth = noBtn.offsetWidth;
-      const btnHeight = noBtn.offsetHeight;
+      // Heart particle constructor
+      function createHeart() {
+        return {
+          x: Math.random() * canvas.width,
+          y: -30 - Math.random() * 50, // start above canvas
+          size: 18 + Math.floor(Math.random() * 20), // 18–38px
+          speed: 2 + Math.random() * 3,
+          opacity: 0.7 + Math.random() * 0.3,
+          rotation: Math.random() * 360,
+          swing: Math.random() * 0.02 - 0.01, // slight horizontal drift
+        };
+      }
 
-      const maxLeft = containerRect.width - btnWidth;
-      const maxTop = containerRect.height - btnHeight;
+      // Draw a heart symbol at (x,y) with given size and color
+      function drawHeart(x, y, size, opacity, rotation) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((rotation * Math.PI) / 180);
+        ctx.font = `${size}px "Segoe UI", "Arial", "sans-serif"`;
+        ctx.fillStyle = `rgba(255, 77, 109, ${opacity})`; // #ff4d6d
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("❤️", 0, 0);
+        ctx.restore();
+      }
 
-      if (maxLeft <= 20 || maxTop <= 20) return;
+      function updateHearts() {
+        if (!rainActive) return;
 
-      // Constrained range: right side but not too far
-      let minX = containerRect.width * 0.45;
-      let maxX = containerRect.width * 0.8;
-      
-      if (maxX > maxLeft) maxX = maxLeft;
-      if (minX > maxX) minX = maxLeft * 0.6;
-      
-      let newX = Math.floor(Math.random() * (maxX - minX + 1) + minX);
-      
-      let minY = containerRect.height * 0.2;
-      let maxY = containerRect.height * 0.65;
-      if (maxY > maxTop) maxY = maxTop;
-      if (minY > maxY) minY = maxTop * 0.3;
-      
-      let newY = Math.floor(Math.random() * (maxY - minY + 1) + minY);
-      
-      newX = Math.min(Math.max(newX, 0), maxLeft);
-      newY = Math.min(Math.max(newY, 0), maxTop);
+        // add new hearts frequently
+        if (hearts.length < 70 && Math.random() < 0.6) {
+          hearts.push(createHeart());
+        }
 
-      noBtn.style.left = newX + "px";
-      noBtn.style.top = newY + "px";
-      noBtn.style.right = "auto";
-    }
+        // move hearts & remove when off screen
+        for (let i = hearts.length - 1; i >= 0; i--) {
+          const h = hearts[i];
+          h.y += h.speed;
+          h.x += h.swing * 5; // gentle side movement
+          h.rotation += 0.8;
 
-    // NO button: move on hover, touch, click
-    noBtn.addEventListener("mouseenter", function(e) {
-      e.preventDefault();
-      moveNoButtonSafely();
-    });
+          // remove if below bottom
+          if (h.y > canvas.height + 50) {
+            hearts.splice(i, 1);
+          }
+        }
 
-    noBtn.addEventListener("touchstart", function(e) {
-      e.preventDefault();
-      moveNoButtonSafely();
-    }, { passive: false });
+        // draw everything
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let h of hearts) {
+          drawHeart(h.x, h.y, h.size, h.opacity, h.rotation);
+        }
 
-    noBtn.addEventListener("click", function(e) {
-      e.preventDefault();
-      e.stopPropagation(); // important: don't interfere with yes
-      moveNoButtonSafely();
-    });
+        animationFrame = requestAnimationFrame(updateHearts);
+      }
 
-    // ----- YES button scale effects (non-blocking) -----
-    yesBtn.addEventListener("mouseenter", () => {
-      yesBtn.style.transform = "scale(1.12)";
-    });
-    yesBtn.addEventListener("mouseleave", () => {
-      yesBtn.style.transform = "scale(1)";
-    });
-    
-    // Touch scale for yes
-    yesBtn.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      yesBtn.style.transform = "scale(1.12)";
-    });
-    yesBtn.addEventListener("touchend", (e) => {
-      yesBtn.style.transform = "scale(1)";
-    });
+      function startHeartRain() {
+        if (rainActive) return;
+        rainActive = true;
+        hearts = [];
+        // initial batch
+        for (let i = 0; i < 35; i++) {
+          hearts.push(createHeart());
+        }
+        canvas.style.display = "block";
+        if (animationFrame) cancelAnimationFrame(animationFrame);
+        animationFrame = requestAnimationFrame(updateHearts);
+      }
 
-    // ----- Reset position on resize -----
-    function resetNoButtonPosition() {
-      if (buttonsContainer.style.display === "none") return;
-      noBtn.style.right = "5%";
-      noBtn.style.left = "auto";
-      noBtn.style.top = "40px";
-    }
+      function stopHeartRain() {
+        rainActive = false;
+        if (animationFrame) {
+          cancelAnimationFrame(animationFrame);
+          animationFrame = null;
+        }
+        canvas.style.display = "none";
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
 
-    window.addEventListener("resize", function() {
-      if (buttonsContainer.style.display === "none") return;
+      // ----- YES BUTTON: show result + heart rain -----
+      function handleYes() {
+        // hide buttons
+        buttonsContainer.style.display = "none";
+        // show result message & GIF
+        resultDiv.style.display = "block";
+        // start raining hearts
+        startHeartRain();
+      }
+
+      yesBtn.addEventListener("click", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleYes();
+      });
+
+      yesBtn.addEventListener("touchend", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleYes();
+      });
+
+      // ----- NO BUTTON movement (constrained, never far) -----
+      function moveNoButtonSafely() {
+        if (buttonsContainer.style.display === "none") return;
+
+        const containerRect = buttonsContainer.getBoundingClientRect();
+        const btnWidth = noBtn.offsetWidth;
+        const btnHeight = noBtn.offsetHeight;
+
+        const maxLeft = containerRect.width - btnWidth;
+        const maxTop = containerRect.height - btnHeight;
+
+        if (maxLeft <= 20 || maxTop <= 20) return;
+
+        // stay on right side, not too far
+        let minX = containerRect.width * 0.45;
+        let maxX = containerRect.width * 0.8;
+
+        if (maxX > maxLeft) maxX = maxLeft;
+        if (minX > maxX) minX = maxLeft * 0.6;
+
+        let newX = Math.floor(Math.random() * (maxX - minX + 1) + minX);
+
+        let minY = containerRect.height * 0.2;
+        let maxY = containerRect.height * 0.65;
+        if (maxY > maxTop) maxY = maxTop;
+        if (minY > maxY) minY = maxTop * 0.3;
+
+        let newY = Math.floor(Math.random() * (maxY - minY + 1) + minY);
+
+        newX = Math.min(Math.max(newX, 0), maxLeft);
+        newY = Math.min(Math.max(newY, 0), maxTop);
+
+        noBtn.style.left = newX + "px";
+        noBtn.style.top = newY + "px";
+        noBtn.style.right = "auto";
+      }
+
+      // NO button events
+      noBtn.addEventListener("mouseenter", function(e) {
+        e.preventDefault();
+        moveNoButtonSafely();
+      });
+
+      noBtn.addEventListener("touchstart", function(e) {
+        e.preventDefault();
+        moveNoButtonSafely();
+      }, { passive: false });
+
+      noBtn.addEventListener("click", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        moveNoButtonSafely();
+      });
+
+      // ----- YES button scale effects -----
+      yesBtn.addEventListener("mouseenter", () => {
+        yesBtn.style.transform = "scale(1.12)";
+      });
+      yesBtn.addEventListener("mouseleave", () => {
+        yesBtn.style.transform = "scale(1)";
+      });
+
+      yesBtn.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        yesBtn.style.transform = "scale(1.12)";
+      });
+      yesBtn.addEventListener("touchend", (e) => {
+        yesBtn.style.transform = "scale(1)";
+      });
+
+      // ----- Reset NO button position -----
+      function resetNoButtonPosition() {
+        if (buttonsContainer.style.display === "none") return;
+        noBtn.style.right = "5%";
+        noBtn.style.left = "auto";
+        noBtn.style.top = "40px";
+      }
+
+      window.addEventListener("resize", function() {
+        if (buttonsContainer.style.display === "none") return;
+        resetNoButtonPosition();
+        resizeCanvas();
+      });
+
+      // Initialize
       resetNoButtonPosition();
-    });
+      window.addEventListener("load", function() {
+        resetNoButtonPosition();
+        resizeCanvas();
+      });
 
-    // Initial position
-    resetNoButtonPosition();
-    window.addEventListener("load", function() {
-      resetNoButtonPosition();
-    });
+      // Stop rain if result hidden? not necessary, but keep option
+      // (rain stays forever after yes – that's romantic)
+    })();
+  </script>
 
-  })();
-</script>
-
-<!-- 
-  FIX: Yes button now works 100%
-  - Added stopPropagation() to avoid event conflicts
-  - Separate touchend handler for mobile
-  - No overlapping display manipulations
-  - Click event properly hides container + shows result
-  - Tested on mobile + desktop
--->
+  <!-- 
+    ✨ HEART RAIN ADDED ✨
+    - Clicking Yes triggers heart particles falling from top.
+    - Hundreds of red hearts float down with gentle swing.
+    - Canvas covers whole screen, doesn't block clicks.
+    - Yay message and GIF appear as requested.
+  -->
 </body>
 </html>
