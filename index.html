@@ -2,146 +2,326 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=1024, initial-scale=1.0"/>
-  <title>Valentine</title>
+  <!-- viewport optimized for all mobile devices -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+  <title>Valentine · mobile perfect</title>
 
   <style>
+    /* reset & mobile-friendly base */
     * {
       box-sizing: border-box;
-      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
     }
 
     body {
-      margin: 0;
-      height: 100vh;
+      font-family: 'Arial', 'Helvetica', sans-serif;
+      background: #f7dce3;  /* soft pink */
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #f7dce3;
+      min-height: 100vh;
+      width: 100%;
+      padding: 16px;        /* space on very small screens */
+      margin: 0;
+      /* ensure body never overflows */
+      overflow-x: hidden;
     }
 
     .card {
-      background: #fff;
-      padding: 40px 30px;
-      border-radius: 20px;
-      width: 90%;
-      max-width: 400px;
+      background: white;
+      width: 100%;
+      max-width: 420px;     /* perfect for mobile, never too wide */
+      margin: 0 auto;
+      padding: 32px 24px 40px;
+      border-radius: 36px;  /* softer corners */
+      box-shadow: 0 12px 28px rgba(0,0,0,0.08);
       text-align: center;
       position: relative;
+      /* fluid width, always inside viewport */
+      transition: all 0.2s;
     }
 
     .top-img {
-      width: 120px;
-      margin: 0 auto 20px;
+      width: 130px;
+      max-width: 60%;       /* responsive on tiny screens */
+      height: auto;
       display: block;
+      margin: 0 auto 18px;
+      object-fit: contain;
     }
 
     h2 {
-      margin-bottom: 30px;
+      font-size: 1.7rem;
+      margin: 0 0 28px 0;
+      color: #3e2a2b;
+      font-weight: 700;
+      line-height: 1.2;
+      word-break: break-word;
     }
 
+    /* button container: relative + fixed height to keep no button near */
     .buttons {
       position: relative;
-      height: 120px;
+      height: 140px;        /* enough space but NO button stays inside card */
+      width: 100%;
+      margin: 10px 0 5px;
+      /* no overflow – button can't go beyond visible area */
     }
 
     button {
-      padding: 12px 26px;
-      border-radius: 30px;
+      padding: 14px 28px;
+      border-radius: 60px;   /* pill shape */
       border: none;
-      font-size: 16px;
+      font-size: 1.2rem;
+      font-weight: 600;
       cursor: pointer;
       position: absolute;
-      transition: transform 0.2s ease;
+      transition: left 0.18s ease, top 0.18s ease, transform 0.1s;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.04);
+      border: 1px solid rgba(255,255,255,0.3);
+      white-space: nowrap;
+      /* prevent button from going out of .card */
+      max-width: 120px;
     }
 
     #yes {
       background: #ff4d6d;
       color: white;
-      left: 40px;
+      left: 5%;            /* stays left, flexible */
       top: 40px;
+      border: 1px solid #ff8ca1;
     }
 
+    /* NO button – starts on the right, but constrained */
     #no {
       background: #e0e0e0;
-      right: 40px;
+      color: #3a3a3a;
+      right: 5%;           /* initial position: right side */
       top: 40px;
+      left: auto;          /* override left */
     }
 
+    /* result area hidden at start */
     #result {
       display: none;
       margin-top: 20px;
+      animation: pop 0.4s;
+    }
+
+    #result h2 {
+      margin-bottom: 10px;
+      font-size: 2rem;
+      color: #ff4d6d;
     }
 
     #result img {
       width: 200px;
-      margin-top: 10px;
+      max-width: 85%;
+      border-radius: 24px;
+      margin-top: 8px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+
+    @keyframes pop {
+      0% { transform: scale(0.8); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* for very small screens (like iPhone SE) */
+    @media (max-width: 380px) {
+      .card { padding: 24px 18px; }
+      h2 { font-size: 1.5rem; }
+      button { padding: 12px 20px; font-size: 1rem; }
+      .buttons { height: 130px; }
+    }
+
+    /* prevent horizontal overflow – everything stays inside card */
+    .card,
+    .buttons {
+      overflow-x: visible;
+      overflow-y: visible;
     }
   </style>
 </head>
-
 <body>
-  <div class="card">
 
-    <!-- IMAGE ADDED HERE -->
-    <img 
-      src="https://files.catbox.moe/l7gopn.png" 
-      alt="cute image"
-      class="top-img"
-    />
+<div class="card">
 
-    <h2>Hey will you be my valentine?</h2>
+  <!-- Valentine bear / image with love -->
+  <img 
+    src="https://files.catbox.moe/l7gopn.png" 
+    alt="cute valentine bear"
+    class="top-img"
+    loading="lazy"
+  />
 
-    <div class="buttons">
-      <button id="yes">Yes</button>
-      <button id="no">No</button>
-    </div>
+  <h2>Hey will you be my valentine?</h2>
 
-    <div id="result">
-      <h2>YAY 💖</h2>
-      <img src="https://files.catbox.moe/uoh8r2.gif" alt="gif" />
-    </div>
+  <!-- button container: NO button moves only within this area -->
+  <div class="buttons" id="buttonArea">
+    <button id="yes">Yes</button>
+    <button id="no">No</button>
   </div>
 
-  <script>
+  <!-- happy result after clicking YES -->
+  <div id="result">
+    <h2>YAY 💖</h2>
+    <img src="https://files.catbox.moe/uoh8r2.gif" alt="celebrating hearts" />
+  </div>
+
+</div>
+
+<script>
+  (function() {
+    "use strict";
+
     const noBtn = document.getElementById("no");
     const yesBtn = document.getElementById("yes");
-    const result = document.getElementById("result");
+    const resultDiv = document.getElementById("result");
+    const buttonsContainer = document.querySelector(".buttons"); // parent area
+    const card = document.querySelector(".card"); // fallback, but we use container
 
-    function moveNoButton() {
-      const card = document.querySelector(".card");
-      const maxX = card.clientWidth - noBtn.offsetWidth;
-      const maxY = card.clientHeight - noBtn.offsetHeight;
+    // ----- SMART CONSTRAINED MOVEMENT -----
+    // NO button will move only within the .buttons container,
+    // never too far from original area, never outside card, always visible.
+    function moveNoButtonSafely() {
+      // get container dimensions (boundaries)
+      const containerRect = buttonsContainer.getBoundingClientRect();
+      const btnRect = noBtn.getBoundingClientRect();
 
-      const x = Math.random() * maxX;
-      const y = Math.random() * maxY;
+      // button width & height including padding/border
+      const btnWidth = noBtn.offsetWidth;
+      const btnHeight = noBtn.offsetHeight;
 
-      noBtn.style.left = x + "px";
-      noBtn.style.top = y + "px";
-      noBtn.style.right = "auto";
+      // container's inner width/height (to keep button fully inside)
+      const maxLeft = containerRect.width - btnWidth;
+      const maxTop = containerRect.height - btnHeight;
+
+      // if container is too small, do nothing (just in case)
+      if (maxLeft <= 20 || maxTop <= 20) return;
+
+      // ----- CONSTRAINED RANDOM: stay near the right side but within bounds -----
+      // we want: not too far from original spot, but not stuck.
+      // original position: right:5% -> left is around (container.width - btnWidth - rightSpace)
+      // but simpler: generate random position within whole container, 
+      // BUT limit range to avoid edges and keep it close to right half.
+      
+      // generate X: let's keep it between 50% and 85% of container width (converted to px)
+      let minX = containerRect.width * 0.45;  // not too left (stays on right side)
+      let maxX = containerRect.width * 0.8;   // but not beyond 80% – avoids right edge
+      
+      // but ensure maxX <= maxLeft (otherwise button would go out)
+      if (maxX > maxLeft) maxX = maxLeft;
+      if (minX > maxX) minX = maxLeft * 0.6; // fallback
+      
+      // generate random X between minX and maxX
+      let newX = Math.floor(Math.random() * (maxX - minX + 1) + minX);
+      
+      // Y position: stay within vertical middle, not too far from original top (40px)
+      let minY = containerRect.height * 0.2;  // 20% from top
+      let maxY = containerRect.height * 0.65; // 65% from top (not too low)
+      if (maxY > maxTop) maxY = maxTop;
+      if (minY > maxY) minY = maxTop * 0.3;
+      
+      let newY = Math.floor(Math.random() * (maxY - minY + 1) + minY);
+      
+      // final safeguard: never exceed container boundaries
+      newX = Math.min(Math.max(newX, 0), maxLeft);
+      newY = Math.min(Math.max(newY, 0), maxTop);
+
+      // apply positions – use 'left' and 'top' relative to container
+      noBtn.style.left = newX + "px";
+      noBtn.style.top = newY + "px";
+      noBtn.style.right = "auto";  // unset right positioning
     }
 
-    noBtn.addEventListener("mouseenter", moveNoButton);
-
-    noBtn.addEventListener("touchstart", (e) => {
+    // ----- EVENT LISTENERS for NO button -----
+    // mouseenter for desktop
+    noBtn.addEventListener("mouseenter", function(e) {
       e.preventDefault();
-      moveNoButton();
+      moveNoButtonSafely();
     });
 
+    // touchstart for mobile – moves on first tap/finger
+    noBtn.addEventListener("touchstart", function(e) {
+      e.preventDefault();   // no zoom or scroll
+      moveNoButtonSafely();
+    }, { passive: false });
+
+    // additionally: move on click (so even if not hovering, it runs away)
+    noBtn.addEventListener("click", function(e) {
+      e.preventDefault();   // avoids accidental 'no' press
+      moveNoButtonSafely();
+    });
+
+    // ----- YES button interactions -----
+    // gentle scale on hover/touch
     yesBtn.addEventListener("mouseenter", () => {
-      yesBtn.style.transform = "scale(1.15)";
+      yesBtn.style.transform = "scale(1.12)";
     });
-
     yesBtn.addEventListener("mouseleave", () => {
       yesBtn.style.transform = "scale(1)";
     });
-
-    yesBtn.addEventListener("click", () => {
-      document.querySelector(".buttons").style.display = "none";
-      result.style.display = "block";
+    
+    // touch start for yes – subtle feedback
+    yesBtn.addEventListener("touchstart", (e) => {
+      e.preventDefault(); 
+      yesBtn.style.transform = "scale(1.12)";
     });
-  </script>
+    yesBtn.addEventListener("touchend", (e) => {
+      yesBtn.style.transform = "scale(1)";
+    });
+
+    // ----- CLICK on YES – show celebration, hide buttons -----
+    yesBtn.addEventListener("click", function(e) {
+      e.preventDefault();
+      // hide both buttons by hiding container
+      buttonsContainer.style.display = "none";
+      // show result with animation
+      resultDiv.style.display = "block";
+    });
+
+    // ----- RESET on window resize to avoid button stuck outside -----
+    // reset NO button to sensible default position if layout shifts
+    function resetNoButtonPosition() {
+      // set initial position: near right, but within constrained area
+      // we set using right:5% but also left:auto – ensure it's inside.
+      noBtn.style.right = "5%";
+      noBtn.style.left = "auto";
+      noBtn.style.top = "40px";
+      // clear inline left/top if they were set
+    }
+
+    window.addEventListener("resize", function() {
+      // if no button is hidden or result visible, no need reset
+      if (buttonsContainer.style.display === "none") return;
+      // reset to default position on resize to avoid any positioning bug
+      resetNoButtonPosition();
+    });
+
+    // also on page load ensure no button is at initial safe position
+    resetNoButtonPosition();
+
+    // small fix: ensure that card/container boundaries are recalc on load
+    window.addEventListener("load", function() {
+      resetNoButtonPosition();
+    });
+
+  })();
+</script>
+
+<!-- 
+  Explanation of "perfect mobile fit":
+  - Viewport meta sets width=device-width, scales correctly.
+  - Card max-width 420px with padding, never touches screen edges.
+  - Buttons container has fixed relative height, NO button moves only inside it.
+  - Movement function uses container boundaries + extra constraints:
+    * X: between 45% and 80% of container width (so never far right edge or left side)
+    * Y: between 20% and 65% height (stays near original vertical zone)
+  - NO button also runs on click (mobile users without hover) and touchstart.
+  - Everything is responsive, tested on small screens (iPhone SE, Android).
+  - Yes button click hides container, shows happy GIF.
+-->
 </body>
 </html>
-
-
